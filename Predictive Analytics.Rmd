@@ -1,0 +1,108 @@
+---
+title: "Predictive Analytics"
+author: "Rohin Mehra"
+date: "5/13/2022"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#Preditictive Analytics
+
+
+Loading libraries and reading file
+```{r}
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(data.table)
+library(caret)
+library(tidyverse)
+
+dat<- read.csv("Life Expectancy Data.csv")
+```
+
+
+Checking for NA values and removing them
+
+```{r pressure}
+sum(is.na(dat))
+
+#There are 2563 NA values.Removing them.
+
+dat1<- na.omit(dat)
+#Now no NA values in the dataset.
+```
+
+Lets consider Life expectancy to be our target variable.
+
+
+Using Density Plot To Check If Response Variable Is Close To Normal
+```{r plot}
+library(e1071)  # for skewness function
+par(mfrow=c(1, 2))  # divide graph area in 2 columns
+
+plot(density(dat1$Life.expectancy), main="Density Plot: Life Expectancy", ylab="Frequency", sub=paste("Skewness:", round(e1071::skewness(dat1$Life.expectancy), 2)))  # density plot for 'Life Expectancy'
+
+polygon(density(dat1$Life.expectancy), col="red")
+
+```
+
+
+1. Removing the variables not to be used and partioning the data into Test ans Training set.
+
+```{r}
+dat2<- dat1[c(-1,-2,-3)]
+
+set.seed(123)
+training.samples <- dat2$Life.expectancy %>% 
+  createDataPartition(p = 0.8, list = FALSE)
+train.data  <- dat2[training.samples, ]
+test.data <- dat2[-training.samples, ]
+```
+
+80% of the data is partition into Training set and 20% in Test set.
+
+
+2.Fitting the model
+
+```{r Model}
+model<- lm(Life.expectancy~., data = train.data)
+
+summary(model)
+```
+Conclusion-
+(a) From the model summary we can get that the R square value is 83%, whcihn is quite good. Also, p value is less than significant 0.05.
+(b) The output shows the variables impacting the model. The variables having p value less than 0.05 are highly significant ones.
+(c) Therefore removing the insignificant ones.
+
+
+Model Update
+```{r}
+model_updated<- lm(Life.expectancy~Adult.Mortality+infant.deaths+percentage.expenditure+ under.five.deaths+
+                     Total.expenditure+ Diphtheria+ HIV.AIDS+ Income.composition.of.resources+Schooling, data = train.data)
+
+summary(model_updated)
+```
+Now all variables are highly significant.
+
+
+
+3.Predicting the with test set-
+```{r}
+# Predict test data based on model
+predict_reg <- model_updated %>% predict(test.data)
+
+```
+
+```{r}
+linear_rmse<- data.frame(
+  RMSE = caret::RMSE(predict_reg, test.data$Life.expectancy),
+  Rsquare = caret::R2(predict_reg, test.data$Life.expectancy)
+)
+
+sigma(model_updated)/mean(test.data$Life.expectancy)
+```
+1. We can see that the RMSE value is low i.e 3.689 and R square is high i.e 81.8%, meaning model is good.
+2. Also, the average prediction error rate is 5%.
